@@ -1,0 +1,25 @@
+services:
+  phoa-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: phoa-web
+    command:
+      [
+        "streamlit",
+        "run",
+        "streamlit_app.py",
+        "--server.address=0.0.0.0",
+        "--server.port=8501",
+      ]
+    ports:
+      - "8501:8501"
+
+  phoa-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: phoa-cli
+    command: ["python", "main.py", "--no-viz", "--steps", "120"]
+    profiles: ["cli"]
+
