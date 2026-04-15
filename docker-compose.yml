@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: phoa-web
     command:
       [
         "streamlit",
@@ -19,7 +18,5 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: phoa-cli
     command: ["python", "main.py", "--no-viz", "--steps", "120"]
     profiles: ["cli"]
-

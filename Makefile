@@ -3,7 +3,7 @@ VENV ?= .venv
 VPY := $(VENV)/bin/python
 VPIP := $(VENV)/bin/pip
 
-.PHONY: setup install-dev lint test run run-web
+.PHONY: setup install-dev lint test run run-web benchmark tune run-dynamic
 .PHONY: docker-build docker-run-cli docker-run-web docker-compose-web docker-compose-cli
 
 setup:
@@ -23,8 +23,17 @@ test:
 run:
 	$(VPY) main.py
 
+run-dynamic:
+	$(VPY) main.py --target-mode evasive --target-move-prob 0.45 --adaptive-pursuit
+
 run-web:
 	$(VENV)/bin/streamlit run streamlit_app.py
+
+benchmark:
+	$(VPY) main.py --benchmark
+
+tune:
+	$(VPY) main.py --tune-thresholds
 
 docker-build:
 	docker build -t phoa:latest .

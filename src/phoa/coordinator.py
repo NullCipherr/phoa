@@ -5,19 +5,26 @@ import random
 from dataclasses import dataclass
 
 from .drones import Finisher, Scout
+from .policies import PhoaExplorationPolicy, ScoutMovementPolicy
 from .spatial_grid import Point, SpatialGrid
 
 
 @dataclass
 class Metrics:
+    """Métricas operacionais por passo da simulação."""
+
     step: int
     total_energy_spent: float
     phase_two_step: int | None
     found: bool
+    angular_coverage: float
+    capture_rate: float
 
 
 @dataclass
 class TacticalSnapshot:
+    """Snapshot tático para visualização e telemetria detalhada."""
+
     step: int
     center: Point
     center_heat: float
@@ -44,19 +51,26 @@ class PrideCoordinator:
         rng_seed: int | None = None,
         engage_threshold: float = 0.68,
         min_angular_coverage: float = 0.55,
+        scout_policy: ScoutMovementPolicy | None = None,
+        adaptive_pursuit: bool = False,
     ) -> None:
         self.grid = grid
         self.scouts = scouts
         self.finishers = finishers
         self.target = target
+        self.prev_target = target
+        self.target_velocity = (0, 0)
         self.rng = random.Random(rng_seed)
         self.engage_threshold = engage_threshold
         self.min_angular_coverage = min_angular_coverage
+        self.scout_policy = scout_policy or PhoaExplorationPolicy()
+        self.adaptive_pursuit = adaptive_pursuit
         self.phase_two = False
         self.phase_two_step: int | None = None
         self.total_initial_energy = sum(d.energy for d in scouts + finishers)
 
     def _bearing(self, p: Point, c: Point) -> float:
+        """Ângulo polar de `p` em relação ao centro `c`."""
         return math.atan2(p.y - c.y, p.x - c.x)
 
     def _angular_coverage(self, center: Point) -> float:
@@ -84,7 +98,16 @@ class PrideCoordinator:
         return Point(x, y)
 
     def _encirclement_center(self) -> Point:
+        """Centro tático atual definido pelo pico do heatmap."""
         return self.grid.best_heat_point()
+
+    def update_target_state(self, new_target: Point) -> None:
+        """Atualiza alvo e estima velocidade discreta para perseguição adaptativa."""
+        vx = new_target.x - self.target.x
+        vy = new_target.y - self.target.y
+        self.prev_target = self.target
+        self.target = new_target
+        self.target_velocity = (vx, vy)
 
     def CoordinateEncirclement(self) -> None:
         """
@@ -128,6 +151,7 @@ class PrideCoordinator:
             scout.move_to(self.grid, best)
 
     def TransitionToPhaseTwo(self, step: int) -> bool:
+        """Ativa finalizadores quando calor e cobertura angular atingem limiares."""
         center = self._encirclement_center()
         heat = self.grid.heat_map[center.y][center.x]
         coverage = self._angular_coverage(center)
@@ -140,29 +164,42 @@ class PrideCoordinator:
         return self.phase_two
 
     def update_scouts(self) -> None:
+        """Atualiza exploração e contribuição de calor dos scouts."""
         hint = self._encirclement_center()
         for scout in self.scouts:
-            scout.explore_step(self.grid, hint, self.rng)
+            next_pos = self.scout_policy.choose_next_position(scout, self.grid, hint, self.rng)
+            if next_pos is not None:
+                scout.move_to(self.grid, next_pos)
             signal = scout.scan_target_signal(self.target, self.rng)
             self.grid.add_heat(scout.pos, signal * 0.7)
             if scout.distance(self.target) <= 1.5:
                 self.grid.add_heat(self.target, 1.0)
 
     def update_finishers(self) -> None:
+        """Atualiza estado dos finishers (standby ou avanço para centro)."""
         center = self._encirclement_center()
+        predicted_target = self.target
+        if self.adaptive_pursuit:
+            vx, vy = self.target_velocity
+            predicted = Point(self.target.x + vx, self.target.y + vy)
+            if self.grid.is_free(predicted):
+                predicted_target = predicted
         for fin in self.finishers:
             if not fin.engaged:
                 fin.standby_step()
                 continue
-            fin.move_towards(self.grid, center)
+            pursuit_point = predicted_target if self.adaptive_pursuit else center
+            fin.move_towards(self.grid, pursuit_point)
 
     def target_captured(self) -> bool:
+        """Verifica captura do alvo por proximidade de ao menos um finisher."""
         for fin in self.finishers:
             if fin.distance(self.target) <= 1.0:
                 return True
         return False
 
     def step(self, step_idx: int) -> None:
+        """Executa um ciclo completo de atualização do sistema PHOA."""
         protected = {self.target}
         protected.update(s.pos for s in self.scouts)
         protected.update(f.pos for f in self.finishers)
@@ -174,16 +211,23 @@ class PrideCoordinator:
         self.update_finishers()
 
     def metrics(self, step_idx: int) -> Metrics:
+        """Calcula métricas agregadas usadas por CLI, testes e benchmark."""
         remaining = sum(d.energy for d in self.scouts + self.finishers)
         spent = self.total_initial_energy - remaining
+        center = self._encirclement_center()
+        coverage = self._angular_coverage(center)
+        found = self.target_captured()
         return Metrics(
             step=step_idx,
             total_energy_spent=spent,
             phase_two_step=self.phase_two_step,
-            found=self.target_captured(),
+            found=found,
+            angular_coverage=coverage,
+            capture_rate=1.0 if found else 0.0,
         )
 
     def tactical_snapshot(self, step_idx: int) -> TacticalSnapshot:
+        """Coleta estado tático detalhado para frontend e análise."""
         center = self._encirclement_center()
         center_heat = self.grid.heat_map[center.y][center.x]
         coverage = self._angular_coverage(center)

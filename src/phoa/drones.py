@@ -9,6 +9,8 @@ from .spatial_grid import Point, SpatialGrid
 
 @dataclass
 class Drone:
+    """Agente base com movimento discreto e controle energético."""
+
     drone_id: int
     pos: Point
     speed: int
@@ -22,12 +24,15 @@ class Drone:
         self.path.append(self.pos)
 
     def distance(self, target: Point) -> float:
+        """Distância Euclidiana ao ponto-alvo."""
         return math.hypot(target.x - self.pos.x, target.y - self.pos.y)
 
     def can_move(self) -> bool:
+        """Indica se há energia suficiente para realizar movimento."""
         return self.energy >= self.move_cost
 
     def move_towards(self, grid: SpatialGrid, target: Point) -> None:
+        """Move greedily em direção ao alvo respeitando vizinhança livre."""
         if not self.can_move():
             return
         for _ in range(self.speed):
@@ -41,6 +46,7 @@ class Drone:
             grid.mark_visit(self.pos)
 
     def move_to(self, grid: SpatialGrid, next_pos: Point) -> None:
+        """Move para posição adjacente específica, caso seja válida."""
         if not self.can_move():
             return
         if next_pos in grid.neighbor_points(self.pos):
@@ -52,6 +58,8 @@ class Drone:
 
 @dataclass
 class Scout(Drone):
+    """Drone de exploração com sensor mais ruidoso e alta mobilidade."""
+
     explore_bias: float = 0.65
 
     def scan_target_signal(self, target: Point, rng: random.Random) -> float:
@@ -66,6 +74,7 @@ class Scout(Drone):
         return max(0.0, min(1.0, noisy))
 
     def explore_step(self, grid: SpatialGrid, target_hint: Point, rng: random.Random) -> None:
+        """Seleciona próximo passo ponderando exploração, pista e ruído."""
         if not self.can_move():
             return
         nbrs = grid.neighbor_points(self.pos)
@@ -83,9 +92,11 @@ class Scout(Drone):
 
 @dataclass
 class Finisher(Drone):
+    """Drone de precisão que opera em standby até o engajamento."""
+
     standby_cost: float = 0.02
     engaged: bool = False
 
     def standby_step(self) -> None:
+        """Aplica consumo mínimo de energia em modo de espera."""
         self.energy = max(0.0, self.energy - self.standby_cost)
-

@@ -1,22 +1,22 @@
-# Arquitetura do Projeto
+# Project Architecture
 
-## Visao geral
-O projeto segue separacao entre dominio de simulacao e interfaces de execucao.
+## Overview
+The project separates simulation domain logic from execution interfaces.
 
-## Camadas
-- `src/phoa/spatial_grid.py`: modelagem espacial e dinamica de obstaculos.
-- `src/phoa/drones.py`: entidades de dominio (`Drone`, `Scout`, `Finisher`).
-- `src/phoa/coordinator.py`: orquestracao tatico-operacional do PHOA.
-- `src/phoa/simulation.py`: ciclo de simulacao e metricas agregadas.
-- `src/phoa/cli.py`: entrypoint de linha de comando.
-- `src/phoa/streamlit_app.py`: frontend para monitoramento visual.
+## Layers
+- `src/phoa/spatial_grid.py`: spatial modeling and obstacle dynamics.
+- `src/phoa/drones.py`: domain entities (`Drone`, `Scout`, `Finisher`).
+- `src/phoa/coordinator.py`: PHOA tactical-operational orchestration.
+- `src/phoa/simulation.py`: simulation loop and aggregated metrics.
+- `src/phoa/cli.py`: command-line entrypoint.
+- `src/phoa/streamlit_app.py`: visual monitoring frontend.
 
-## Decisoes arquiteturais
-- Modelo orientado a objetos para papéis de agentes.
-- Separacao de UI (CLI/Streamlit) do núcleo algorítmico.
-- `src layout` para melhorar empacotamento, testes e distribuicao.
+## Architectural Decisions
+- Object-oriented model for agent roles.
+- Clear separation between UI (CLI/Streamlit) and algorithm core.
+- `src layout` to improve packaging, testing, and distribution.
 
-## Evolucao recomendada
-- Introduzir camada `services/` para cenarios de experimento batch.
-- Adicionar interfaces de persistencia para telemetria (CSV/Parquet/DB).
-- Criar modulo de planners para substituicao de estrategias de movimento.
+## Recommended Evolution
+- Introduce a `services/` layer for batch experiment scenarios.
+- Add telemetry persistence interfaces (CSV/Parquet/DB).
+- Create a planner module for movement strategy replacement.

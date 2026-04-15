@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Point:
+    """Ponto discreto no grid."""
+
     x: int
     y: int
 
@@ -43,18 +45,22 @@ class SpatialGrid:
             self.obstacles.add(p)
 
     def in_bounds(self, p: Point) -> bool:
+        """Retorna `True` se o ponto estiver dentro dos limites do mapa."""
         return 0 <= p.x < self.width and 0 <= p.y < self.height
 
     def is_free(self, p: Point) -> bool:
+        """Retorna `True` para célula válida e não ocupada por obstáculo."""
         return self.in_bounds(p) and p not in self.obstacles
 
     def random_free_point(self) -> Point:
+        """Sorteia célula livre de forma uniforme."""
         while True:
             p = Point(self.rng.randrange(self.width), self.rng.randrange(self.height))
             if self.is_free(p):
                 return p
 
     def neighbor_points(self, p: Point) -> list[Point]:
+        """Retorna vizinhança de 8 conectividades restrita a células livres."""
         candidates = [
             Point(p.x + 1, p.y),
             Point(p.x - 1, p.y),
@@ -93,6 +99,7 @@ class SpatialGrid:
                 break
 
     def add_heat(self, p: Point, value: float) -> None:
+        """Acumula calor no ponto com truncamento inferior em zero."""
         if not self.in_bounds(p):
             return
         self.heat_map[p.y][p.x] = max(0.0, self.heat_map[p.y][p.x] + value)
@@ -117,6 +124,7 @@ class SpatialGrid:
         self.heat_map = new_map
 
     def mark_visit(self, p: Point) -> None:
+        """Incrementa contador de visitas da célula."""
         if self.in_bounds(p):
             self.visits[p.y][p.x] += 1
 
@@ -129,6 +137,7 @@ class SpatialGrid:
         return 1.0 / (1 + self.visits[p.y][p.x])
 
     def best_heat_point(self) -> Point:
+        """Retorna a célula livre com maior valor no mapa de calor."""
         best = Point(0, 0)
         best_v = -1.0
         for y in range(self.height):
@@ -143,5 +152,5 @@ class SpatialGrid:
         return best
 
     def max_heat(self) -> float:
+        """Valor máximo atual do heatmap."""
         return max(max(row) for row in self.heat_map)
-
