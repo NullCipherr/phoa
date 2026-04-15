@@ -62,7 +62,7 @@ def render_kpi_cards(
         ("Finishers Engajados", str(engaged_finishers)),
     ]
     cols = st.columns(6, gap="small")
-    for col, (label, value) in zip(cols, cards):
+    for col, (label, value) in zip(cols, cards, strict=True):
         col.markdown(
             f"""
             <article class="phoa-kpi-card">
@@ -88,7 +88,7 @@ def render_result_cards(
         ("Transição fase 2", str(phase_two_step) if phase_two_step is not None else "N/A"),
     ]
     cols = st.columns(4, gap="small")
-    for col, (label, value) in zip(cols, cards):
+    for col, (label, value) in zip(cols, cards, strict=True):
         col.markdown(
             f"""
             <article class="phoa-kpi-card phoa-kpi-card--result">
